@@ -55,4 +55,4 @@ gcc task_2.c -o task_2
 running the compiled programme while you are in the same directory
 ``` ./task_2 ```
 ### output example
-
+![image](https://github.com/moazragab12/STM_System-Programming-with-Linux/assets/123643446/02aa909d-19c6-43ff-8878-88ad5d4a1db8)
