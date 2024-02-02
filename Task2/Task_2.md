@@ -6,7 +6,7 @@ This C programme prompts the user to input text until they choose to terminate t
 ## C Code (task_2.c)
 ```c
 
-      #include<stdio.h>
+#include<stdio.h>
 #include<string.h>
 int main(void)
 {
