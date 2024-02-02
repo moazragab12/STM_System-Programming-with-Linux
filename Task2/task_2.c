@@ -2,22 +2,21 @@
 #include<string.h>
 int main(void)
 {
-        while(1)
-        {       printf("Hello brother lets start > ");
+    char input[200];
 
-char input[200];
-fgets(input,200,stdin);
-input[strcspn(input,"\n")]='\0';
+    while (1) {
+        printf("Hello brother lets start > ");
 
-if(strcmp("exit",input)==0)
-{printf("GOOD BYE !\n ");
-        break;
+        fgets(input, 200, stdin);
+        input[strcspn(input, "\n")] = '\0';
+
+        if (strcmp("exit", input) == 0) {
+            printf("GOOD BYE !\n ");
+            break;
+        } else
+            printf("you said :%s\n ", input);
+    }
+    return 0;
+
 }
-else
-printf("you said :%s\n ",input);
-          }
-        return 0;
-
-        }
-
 
