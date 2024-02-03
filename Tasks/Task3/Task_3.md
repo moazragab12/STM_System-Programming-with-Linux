@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 }
 ```
 ### 4.femtoshell.c
- - Description: This program `femroshell.c` works as shell but with limited commands -you can guess it from
+ - Description: This program `femtoshell.c` works as shell but with limited commands -you can guess it from
      it's name - ^_^   it provides `cd,pwd,echo `command and you can use `exit ` to terminate it 
  - ####  command usage :
 ```
