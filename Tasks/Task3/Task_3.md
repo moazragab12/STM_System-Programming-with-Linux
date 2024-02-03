@@ -1,7 +1,7 @@
 # Task_3 README
 ## Contents
 ### 1.mypwd.c
- - Description: This program `my_pwdv1.c` prints the current working directory 
+ - Description: This program `my_pwd.c` prints the current working directory 
 using the ` getcwd `  and fixed buffer size
  - ####  command usage :
 ```
