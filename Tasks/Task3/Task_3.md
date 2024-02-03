@@ -231,9 +231,17 @@ int main(void)
  ```
 ### Output examples:
 - 1-mypwd
+  
+  ![image](https://github.com/moazragab12/STM_System-Programming-with-Linux/assets/123643446/8742eb15-6c07-4cfd-9dad-f450fbf4aa2f)
 - 2-mymv
+![image](https://github.com/moazragab12/STM_System-Programming-with-Linux/assets/123643446/8cfd2f5e-eea5-4d1a-9512-5f87b34958be)
+  
 - 3-myecho
+![image](https://github.com/moazragab12/STM_System-Programming-with-Linux/assets/123643446/5aeaee0d-eba4-472e-8a47-b00f442c2c3e)
+
 - 4-femtoshell  
+![image](https://github.com/moazragab12/STM_System-Programming-with-Linux/assets/123643446/85b8f84c-1491-4d4e-b7b8-2f6418b36875)
+
 ### Note: make sure that executable permissions for each program before running.
 ### Building processing instruction :
 - compile the source code using the `gcc` compiler and use this command:
