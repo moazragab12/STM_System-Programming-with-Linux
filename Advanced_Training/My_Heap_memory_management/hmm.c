@@ -1,6 +1,8 @@
 #include<stdio.h>
 #include <unistd.h>
 #include"hmm.h"
+
+#include <stdlib.h>
 #define page 4096
 
 static  	int ctr=0;
@@ -22,18 +24,25 @@ void split(node * current, node * previos, int size)
     current->size = size;
     current->next = (char *) ((char *) current + size + sizeof(node));
     current->prev = (char *) previos;
-    temp = (node *) current->next;
-    temp->size = s - size - (int) sizeof(node);
-    temp->free = 1;
-    temp->prev = (char *) current;
-    temp->next = (char *) ptr;
-    if(temp->next>upper_sbrk)
-    {     sbrk((__intptr_t) 16 * page);
-	    upper_sbrk = (char *) sbrk(0) - 1;
-    }
-	//error here
-	if(((node *) temp->next)->prev != NULL &&((node *) temp->next)->prev<upper_sbrk && ((node *) temp->next)->prev>heap)
-    ((node *) temp->next)->prev = (char *) temp;
+	//error may be here in temp if size is not suitable
+	if(s - size - (int) sizeof(node)>=0) {
+		temp = (node *) current->next;
+		temp->size = s - size - (int) sizeof(node);
+		temp->free = 1;
+		temp->prev = (char *) current;
+		temp->next = (char *) ptr;
+		if(temp->next>upper_sbrk)
+		{     sbrk((__intptr_t) 16 * page);
+			upper_sbrk = (char *) sbrk(0) - 1;
+		}
+		//error here
+		if(((node *) temp->next)->prev != NULL &&((node *) temp->next)->prev<upper_sbrk && ((node *) temp->next)->prev>heap)
+			((node *) temp->next)->prev = (char *) temp;
+	}
+	else {
+		current->size=s;
+		current->next = (char *) ptr;
+	}
 
 //edit tail
 
@@ -77,11 +86,7 @@ void *heap_allocator(size_t size)
     ctr=0;
 
 	while ( current->next+(node_size) <upper_sbrk &&  current->next != NULL) {
-		// ctr++;
-		// if(ctr>=2515) {
-		// 	sleep(1);
-		//
-		// }
+
 	    if (current->free == 1 && current->size >= (int) size) {
 		if (current->size > (int) size)
 		    split(current, previos, (int) size);
@@ -102,8 +107,7 @@ void *heap_allocator(size_t size)
 
 
 	}
-    	// if(ctr>2515)
-    	// {sleep(1);}
+
 	while ((char *) tail+tail->size + size + 2*sizeof(node) >= upper_sbrk) {
 	    sbrk((__intptr_t) 8 * page);
 	    upper_sbrk = (char *) sbrk(0) - 1;
@@ -119,9 +123,7 @@ void *heap_allocator(size_t size)
 	current->prev = (char *) previos;
 if(current>tail && current->free==0)
 	{tail = current;}
-	//  tail->free=1;
-	//  tail->next=NULL;
-	//    tail->prev=(char *)current;
+
 	return (void *) (current + 1);
 
 
@@ -132,25 +134,12 @@ void merge(node * nodes)
 {
     node *try;
     try = (node *) nodes->next;
-    // if(nodes->next>=upper_sbrk)
-    // {
-    //     nodes->free=1;
-    //     //decrease sbrk
-    //     nodes->next=upper_sbrk-node_size-1;
-    //     nodes->size=(int)((__intptr_t)nodes->next-(__intptr_t)(char *)nodes-node_size);
-    //     try = (node *) nodes->next;
-    // }
+
     while (nodes->next != NULL && ((node *) nodes->next)->free == 1) {
 	nodes->free = 1;
 	nodes->size += ((node *) nodes->next)->size + (int) sizeof(node);
 	nodes->next = ((node *) nodes->next)->next;
-//    if(nodes->next>=upper_sbrk)
-//     {
-//         nodes->free=1;
-//         nodes->next=upper_sbrk-node_size-1;
-//         nodes->size=(int)((__intptr_t)nodes->next-(__intptr_t)(char *)nodes-node_size);
 
-//     }
 	((node *) (nodes->next))->prev = (char *) nodes;
    if(tail==nodes)
    { node *temp = nodes;
@@ -262,57 +251,61 @@ void *heap_realloc(void *ptr, size_t size)
 
 
 
-
-int main(void)
-{
-    int *ptr;
-    for (int i = 0; i < 3; i++) {
-	ptr = (int *) heap_allocator( page);
-
-
-
-    }
-
-    heap_free(ptr);
-    int *ptr1 = (int *) heap_allocator(3000);
-    int *ptr2 = (int *) heap_allocator(500);
- int *ptr3=   (int *) heap_allocator(15 * page);
-    heap_allocator(500);
-   heap_free( heap_allocator(1000));
-    heap_free(ptr1);
-    heap_free(ptr2);
-   heap_free(ptr3);
-    int *ptr11[1000];
-        for (int i = 0; i < 1000; i++) {
-	ptr11[i] = (int *) heap_allocator( 4*page);
-    }
-    for(int i=200;i<1000;i++)
-    {
-        heap_free(ptr11[i]);
-    }
-    heap_allocator(page);
-        node *temp = (node *) head;
-    while (temp->next != NULL) {
-	if (temp->free == 1) {
-	    printf
-		("free size     %d , Address of page %p, free stat %d , prev %p , next %p \n",temp->size, temp, temp->free, temp->prev, temp->next);
-	}
-
-	else {
-	    printf
-		("allocated size %d, Address of page %p, free stat %d , prev %p , next %p \n",
-		 temp->size, temp, temp->free, temp->prev, temp->next);
-	}
-	temp = (node *) temp->next;
-
-    }
-    printf("upper sbrk %p\n", upper_sbrk);
-
-    printf("lower sbrk %ld\n", lower_sbrk);
-
-    printf("diff %ld\n", (upper_sbrk - heap) / page);
-    printf("tail %p\n", tail);
-
-    return 0;
-}
+//
+// int main(void)
+// {
+//     int *ptr[3];
+//     for (int i = 0; i < 3; i++) {
+// 	ptr[i] = (int *) heap_allocator( page);
+//
+//
+//
+//     }
+// 	heap_free(ptr[1]);
+// 	heap_allocator(4086);
+// 	heap_allocator(10);
+//
+//  //
+//  //    heap_free(ptr);
+//  //    int *ptr1 = (int *) heap_allocator(3000);
+//  //    int *ptr2 = (int *) heap_allocator(500);
+//  // int *ptr3=   (int *) heap_allocator(15 * page);
+//  //    heap_allocator(500);
+//  //   heap_free( heap_allocator(1000));
+//  //    heap_free(ptr1);
+//  //    heap_free(ptr2);
+//  //   heap_free(ptr3);
+//  //    int *ptr11[1000];
+//  //        for (int i = 0; i < 1000; i++) {
+// 	// ptr11[i] = (int *) heap_allocator( 4*page);
+//  //    }
+//  //    for(int i=200;i<1000;i++)
+//  //    {
+//  //        heap_free(ptr11[i]);
+//  //    }
+//  //    heap_allocator(page);
+//         node *temp = (node *) head;
+//     while (temp->next != NULL) {
+// 	if (temp->free == 1) {
+// 	    printf
+// 		("free size     %d , Address of page %p, free stat %d , prev %p , next %p \n",temp->size, temp, temp->free, temp->prev, temp->next);
+// 	}
+//
+// 	else {
+// 	    printf
+// 		("allocated size %d, Address of page %p, free stat %d , prev %p , next %p \n",
+// 		 temp->size, temp, temp->free, temp->prev, temp->next);
+// 	}
+// 	temp = (node *) temp->next;
+//
+//     }
+//     printf("upper sbrk %p\n", upper_sbrk);
+//
+//     printf("lower sbrk %ld\n", lower_sbrk);
+//
+//     printf("diff %ld\n", (upper_sbrk - heap) / page);
+//     printf("tail %p\n", tail);
+//
+//     return 0;
+// }
 
