@@ -139,7 +139,8 @@ void merge(node * nodes)
 	nodes->free = 1;
 	nodes->size += ((node *) nodes->next)->size + (int) sizeof(node);
 	nodes->next = ((node *) nodes->next)->next;
-
+// accessing null here
+	if(nodes->next!=NULL)
 	((node *) (nodes->next))->prev = (char *) nodes;
    if(tail==nodes)
    { node *temp = nodes;
@@ -265,25 +266,25 @@ void *heap_realloc(void *ptr, size_t size)
 // 	heap_allocator(4086);
 // 	heap_allocator(10);
 //
-//  //
-//  //    heap_free(ptr);
-//  //    int *ptr1 = (int *) heap_allocator(3000);
-//  //    int *ptr2 = (int *) heap_allocator(500);
-//  // int *ptr3=   (int *) heap_allocator(15 * page);
-//  //    heap_allocator(500);
-//  //   heap_free( heap_allocator(1000));
-//  //    heap_free(ptr1);
-//  //    heap_free(ptr2);
-//  //   heap_free(ptr3);
-//  //    int *ptr11[1000];
-//  //        for (int i = 0; i < 1000; i++) {
-// 	// ptr11[i] = (int *) heap_allocator( 4*page);
-//  //    }
-//  //    for(int i=200;i<1000;i++)
-//  //    {
-//  //        heap_free(ptr11[i]);
-//  //    }
-//  //    heap_allocator(page);
+//
+//     heap_free(ptr);
+//     int *ptr1 = (int *) heap_allocator(3000);
+//     int *ptr2 = (int *) heap_allocator(500);
+//  int *ptr3=   (int *) heap_allocator(15 * page);
+//     heap_allocator(500);
+//    heap_free( heap_allocator(1000));
+//     heap_free(ptr1);
+//     heap_free(ptr2);
+//    heap_free(ptr3);
+//     int *ptr11[1000];
+//         for (int i = 0; i < 1000; i++) {
+// 	ptr11[i] = (int *) heap_allocator( 4*page);
+//     }
+//     for(int i=100;i<1000;i++)
+//     {
+//         heap_free(ptr11[i]);
+//     }
+//     heap_allocator(page);
 //         node *temp = (node *) head;
 //     while (temp->next != NULL) {
 // 	if (temp->free == 1) {
@@ -308,4 +309,4 @@ void *heap_realloc(void *ptr, size_t size)
 //
 //     return 0;
 // }
-
+//
