@@ -41,11 +41,11 @@ void split(node * current, node * previos, int size)
 {
     node *temp;
     int s = (int) current->size;
-    char *ptr = (char *) current->next;
+    node *ptr =  current->next;
     current->free = 0;
     current->size = size;
-    current->next = (char *) ((char *) current + size + sizeof(node));
-    current->prev = (char *) previos;
+    current->next = (node *) ((char *) current + size+ node_size);
+    current->prev =  previos;
     //printf("IN SPLIT:PREV of current PTR: %p ,current ptr :%p , NEXT of current  PTR after spilting: %p, NEXT BEFORE SPLIT:%p \n",current->prev,current,current->next,ptr);
 
     if (s - size - (int) sizeof(node) >= 0) {
@@ -56,21 +56,21 @@ void split(node * current, node * previos, int size)
 	}
 	temp->size = s - size - (int) sizeof(node);
 	temp->free = 1;
-	temp->prev = (char *) current;
-	temp->next = (char *) ptr;
+	temp->prev = current;
+	temp->next =  ptr;
 	//      printf("IN SPLIT if1:PREV of temp PTR: %p ,temp ptr :%p , NEXT of temp PTR: %p \n",temp->prev,temp,temp->next);
-	if (temp->next > upper_sbrk) {
+	if (((char*)temp->next) > upper_sbrk) {
 	    sbrk(16 * page);
 	    upper_sbrk = (char *) sbrk(0) - 1;
 	}
 
-	if (((node *) temp->next)->prev != NULL
-	    && ((node *) temp->next)->prev < upper_sbrk
-	    && ((node *) temp->next)->prev > heap)
-	    ((node *) temp->next)->prev = (char *) temp;
+	if ((temp->next)->prev != NULL
+	    &&(char*) (( temp->next)->prev )< upper_sbrk
+	    && (char*)(( temp->next)->prev) > heap)
+	    ( temp->next)->prev =  temp;
     } else {
 	current->size = s;
-	current->next = (char *) ptr;
+	current->next =  ptr;
 	//      printf("IN SPLIT couldnot merge:PREV of current PTR: %p ,current ptr :%p , NEXT of current PTR: %p \n",current->prev,current,current->next);
 
     }
@@ -86,8 +86,6 @@ void split(node * current, node * previos, int size)
 
 }
 
-
-
 void *heap_allocator(size_t size)
 {
     size = (((size + 7) / 8) * 8);
@@ -95,27 +93,24 @@ void *heap_allocator(size_t size)
     if (first_sbrk) {
 	heap = sbrk(9 * page);
 	upper_sbrk = (char *) sbrk(0) - 1;
-
 	first_sbrk = 0;
-    }
-    static int first = 1;
-    if (first) {
-	head = (node *) heap;
-	tail = (node *) heap;
-	head->prev = NULL;
-	head->size = (int) sizeof(node) + (int) size;
-	while ((int) sizeof(node) + (int) size + (char *) head >
-	       (char *) upper_sbrk) {
-	    sbrk((8 * page));
-	    upper_sbrk = (char *) sbrk(0) - 1;
-	}
-	head->next = heap + sizeof(node) + size;
-	first = 0;
-	head->free = 0;
-	//  printf("PREV of current PTR: %p ,current ptr :%p , NEXT of current PTR: %p \n",head->prev,head,head->next);
-	return (void *) (head + 1);
 
-    } else {
+
+    	head = (node *) heap;
+    	tail = (node *) heap;
+    	head->prev = NULL;
+    	head->size = (int) sizeof(node) + (int) size;
+    	while ((int) sizeof(node) + (int) size + (char *) head >
+			   (char *) upper_sbrk) {
+    		sbrk((8 * page));
+    		upper_sbrk = (char *) sbrk(0) - 1;
+			   }
+    	head->next = (node*)((char*)heap + node_size + size);
+    	head->free = 0;
+    	//  printf("PREV of current PTR: %p ,current ptr :%p , NEXT of current PTR: %p \n",head->prev,head,head->next);
+    	return (void *) (head + 1);
+    }
+ else {
 	node *current = (node *) head->next;
 	node *previos = head;
 
@@ -164,12 +159,12 @@ void *heap_allocator(size_t size)
 	}
 	current->free = 0;
 	current->size = (int) size;
-	current->next = (char *) ((char *) current + size + sizeof(node));
+	current->next =  (node*)((char *) current + size + node_size);
 
 
 
 
-	current->prev = (char *) previos;
+	current->prev =  previos;
 	if (current > tail && current->free == 0) {
 	    tail = current;
 	}
@@ -195,11 +190,11 @@ void merge(node * nodes)
 
 
 	nodes->next =
-	    node_size + (char *) ((node *) nodes->next) +
-	    ((node *) nodes->next)->size;
-// accessing null here
+	 (node*)( node_size + (char *) (nodes->next) +
+	    ( nodes->next)->size);
+
 	if (nodes->next != NULL)
-	    ((node *) (nodes->next))->prev = (char *) nodes;
+	    ((node *) (nodes->next))->prev =  nodes;
 	if (tail == nodes) {
 	    node *temp = nodes;
 	    while (temp->prev != NULL && ((node *) temp->prev)->free == 1) {
@@ -241,7 +236,7 @@ void merge(node * nodes)
 	    ((node *) (nodes->prev))->next = NULL;
 	nodes = (node *) nodes->prev;
 	if (((char *) try + node_size) < (char *) upper_sbrk)
-	    try->prev = (char *) nodes;
+	    try->prev =  nodes;
 
 
     }
