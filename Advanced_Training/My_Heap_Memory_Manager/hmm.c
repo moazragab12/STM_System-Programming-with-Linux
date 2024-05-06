@@ -37,7 +37,7 @@ void *realloc(void *ptr, size_t size)
 void split(node * nodes, size_t size)
 {
     if ((node_size + size) <= nodes->size) {
-	node *temp = (void *) ((void *) nodes + size + node_size);
+	node *temp = (node *) ((void *) nodes + size + node_size);
 	temp->size = (nodes->size) - size - node_size;
 
 
@@ -131,9 +131,13 @@ void *heap_allocator(size_t size)
 		current->free = yes;
 		// Calculate the size of the new block
 		current->size =
-		    (((size / INIT_SPACE) + 1) * INIT_SPACE) - node_size;
+		    ((((size + node_size) / INIT_SPACE) +
+		      1) * INIT_SPACE) - node_size;
 		// set the block as last block
 		current->next = NULL;
+	    } else {
+		current->size +=
+		    ((((size + node_size) / INIT_SPACE) + 1) * INIT_SPACE);
 	    }
 	    split(current, size);
 	}
@@ -191,21 +195,35 @@ void merge(node * nodes)
 
 void heap_free(void *ptr)
 {
-    //check if the pointer is NULL
-    if (NULL == ptr) {
+    if (ptr == NULL) {
 	return;
-    } else {
-	//mark the block as free
-	node *node = ptr;
-	node--;
-	// if the block is already free
-	if (yes == node->free) {
-	    return;
-	}
-	node->free = yes;
-	//merge the block if possible
-	merge(node);
     }
+    if ((char *) ptr < (char *) heap) {
+	return;
+    }
+    int flg = 0;
+    node *temp1 = (node *) head;
+
+    // Search for the node corresponding to the given pointer to check if it is in my node
+    while ((char *) temp1 >= (char *) heap && temp1->next != NULL) {
+	if (temp1 + 1 == ptr) {
+	    flg = 1;
+	    break;
+	}
+	temp1 = (node *) temp1->next;
+    }
+    if (flg == 0) {
+	return;
+    }
+
+    node *temp = (node *) ptr - 1;
+    temp->free = 1;
+
+    merge(temp);
+
+
+
+
 }
 
 
@@ -277,15 +295,21 @@ void *heap_realloc(void *ptr, size_t size)
 //     heap_free(ptr1);
 //     heap_free(ptr2);
 //    heap_free(ptr3);
-//     int *ptr11[1000];
-//         for (int i = 0; i < 1000; i++) {
+//     node *ptr11[10000];
+//     //     for (int i = 0; i < 1000; i++) {
+//     //
+//     //  ptr11[i] = (int *) heap_allocator( 4*page);
+//     // }
+//     // for(int i=100;i<1000;i++)
+//     // {
+//     //     heap_free(ptr11[i]);
+//     // }
+//      for (int i = 0; i < 10000; i++) {
 //
-//      ptr11[i] = (int *) heap_allocator( 4*page);
-//     }
-//     for(int i=100;i<1000;i++)
-//     {
-//         heap_free(ptr11[i]);
-//     }
+//              ptr11[i] = (node *) heap_allocator( 50*page);
+//              ptr11[i]--;
+//
+//      }
 //     heap_allocator(page);
 //         node *temp = (node *) head;
 //     while (temp->next != NULL) {
