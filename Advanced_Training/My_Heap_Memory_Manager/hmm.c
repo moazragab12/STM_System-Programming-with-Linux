@@ -1,19 +1,16 @@
+/*******************************Author:Moaz Ragab ***********************************************/
+/*******************************Date:15 April 2024 *********************************************/
+/*******************************V:02 **********************************************************/
+
 #include<stdio.h>
 #include <unistd.h>
 #include"hmm.h"
-
 #include <stdlib.h>
 #include <string.h>
-#define page 4096
 
-static int ctr = 0;
-
-char *upper_sbrk;
-long int lower_sbrk = 0;
 char *heap = NULL;
 int first_sbrk = 1;
 node *head = NULL;
-node *tail = NULL;
 /* Enable if you want to replace libc malloc/free */
 #if 1
 void *malloc(size_t size)
@@ -37,226 +34,156 @@ void *realloc(void *ptr, size_t size)
 }
 #endif
 
-void split(node * current, node * previos, int size)
+void split(node * nodes, size_t size)
 {
-    node *temp;
-    int s = (int) current->size;
-    node *ptr =  current->next;
-    current->free = 0;
-    current->size = size;
-    current->next = (node *) ((char *) current + size+ node_size);
-    current->prev =  previos;
-    //printf("IN SPLIT:PREV of current PTR: %p ,current ptr :%p , NEXT of current  PTR after spilting: %p, NEXT BEFORE SPLIT:%p \n",current->prev,current,current->next,ptr);
+    if ((node_size + size) <= nodes->size) {
+	node *temp = (void *) ((void *) nodes + size + node_size);
+	temp->size = (nodes->size) - size - node_size;
 
-    if (s - size - (int) sizeof(node) >= 0) {
-	temp = (node *) current->next;
-	while ((char *) temp > (char *) upper_sbrk) {
-	    sbrk(16 * page);
-	    upper_sbrk = (char *) sbrk(0) - 1;
-	}
-	temp->size = s - size - (int) sizeof(node);
-	temp->free = 1;
-	temp->prev = current;
-	temp->next =  ptr;
-	//      printf("IN SPLIT if1:PREV of temp PTR: %p ,temp ptr :%p , NEXT of temp PTR: %p \n",temp->prev,temp,temp->next);
-	if (((char*)temp->next) > upper_sbrk) {
-	    sbrk(16 * page);
-	    upper_sbrk = (char *) sbrk(0) - 1;
-	}
 
-	if ((temp->next)->prev != NULL
-	    &&(char*) (( temp->next)->prev )< upper_sbrk
-	    && (char*)(( temp->next)->prev) > heap)
-	    ( temp->next)->prev =  temp;
-    } else {
-	current->size = s;
-	current->next =  ptr;
-	//      printf("IN SPLIT couldnot merge:PREV of current PTR: %p ,current ptr :%p , NEXT of current PTR: %p \n",current->prev,current,current->next);
+	temp->free = yes;
+	temp->next = nodes->next;
+	temp->prev = nodes;
+
+	nodes->next = temp;
+	nodes->size = size;
+	// to protect against the case of the last block
+	if (NULL != temp->next) {
+	    temp->next->prev = temp;
+	}
+    }
+    nodes->free = no;
+}
+
+void Init_Heap(size_t size)
+{
+    heap = sbrk(size);
+
+    if (heap == (void *) -1) {
+	perror(" sbrk failed ");
+
+    } else if (heap == NULL) {
+	perror(" sbrk failed ");
 
     }
+    first_sbrk = 0;
 
-//edit tail
-
-    if (current > tail && current->free == 0) {
-	tail = current;
-    }
-
-    return;
-
-
+    //allocate free space
+    head = (node *) heap;
+    head->prev = NULL;
+    head->size = size - node_size;
+    head->next = NULL;
+    head->free = yes;
 }
 
 void *heap_allocator(size_t size)
 {
-    size = (((size + 7) / 8) * 8);
+    size = (((size + 7) / Align) * Align);
 
+    // If it's the first allocation, initialize the heap
     if (first_sbrk) {
-	heap = sbrk(9 * page);
-	upper_sbrk = (char *) sbrk(0) - 1;
+	Init_Heap((((size + node_size) / INIT_SPACE) + 1) * INIT_SPACE);
 	first_sbrk = 0;
+	split(head, size);
+	return (void *) (head + 1);
+    } else {
+	node *current = head;
 
-
-    	head = (node *) heap;
-    	tail = (node *) heap;
-    	head->prev = NULL;
-    	head->size = (int) sizeof(node) + (int) size;
-    	while ((int) sizeof(node) + (int) size + (char *) head >
-			   (char *) upper_sbrk) {
-    		sbrk((8 * page));
-    		upper_sbrk = (char *) sbrk(0) - 1;
-			   }
-    	head->next = (node*)((char*)heap + node_size + size);
-    	head->free = 0;
-    	//  printf("PREV of current PTR: %p ,current ptr :%p , NEXT of current PTR: %p \n",head->prev,head,head->next);
-    	return (void *) (head + 1);
-    }
- else {
-	node *current = (node *) head->next;
-	node *previos = head;
-
-
-
-	while ((char *) current->next + (node_size) < (char *) upper_sbrk
-	       && current->next != NULL) {
-
-	    if (current->free == 1 && current->size >= (int) size) {
-		if (current->size > (int) size + node_size)
-		    split(current, previos, (int) size);
+	// Traverse the linked list to find a suitable free block
+	while (current->next != NULL) {
+	    if (current->free == yes && current->size >= size) {
+		if (current->size >= size + node_size)
+		    split(current, (int) size);
 		else {
-		    current->free = 0;
-		    if ((char *) current > (char *) tail
-			&& current->free == 0)
-			tail = current;
-
-
-
+		    current->free = no;
 		}
-		if (current > tail && current->free == 0)
-		    tail = current;
 		return (void *) (current + 1);
 	    }
-	    //testing
-	    //      printf("PREV of previous PTR: %p ,previous ptr :%p , NEXT of previous PTR: %p \n",previos->prev,previos,previos->next);
-	    previos = current;
-	    if (previos == tail) {
-		current = (node *) previos->next;
-		break;
-	    }
-	    //printf("PREV of current PTR: %p ,current ptr :%p , NEXT of current PTR: %p, SIZE %d \n",current->prev,current,current->next,current->size);
-
 	    current = (node *) current->next;
-	    if (current > tail && NULL != current)
-		tail = current;
-
-
 	}
 
-	while ((char *) tail + tail->size + size + 2 * sizeof(node) >=
-	       upper_sbrk) {
-	    sbrk(8 * page);
-	    upper_sbrk = (char *) sbrk(0) - 1;
+	// If no suitable free block is found, allocate more memory from the heap
+	if ((size + node_size) <= current->size && current->free == yes) {
+	    split(current, size);
+	} else {
+	    long long sz =
+		((((size + node_size) / INIT_SPACE) + 1) * INIT_SPACE);
+	    void *check;
+	    while (sz > size_t_Max) {
+		// Allocate the maximum size_t value if the requested size is too large
+		check = sbrk(size_t_Max);
+		sz -= size_t_Max;
+		if (check == (void *) -1) {
+		    perror(" sbrk failed ");
+		}
+	    }
+	    check = sbrk(sz);
+	    if (check == (void *) -1) {
+		perror(" sbrk failed ");
+	    }
 
+	    if (current->free == no) {
+		// Allocate a new block at the end of the linked list
+		current->next =
+		    (void *) current + current->size + node_size;
+		current->next->prev = current;
+		current = current->next;
+		current->free = yes;
+		// Calculate the size of the new block
+		current->size =
+		    (((size / INIT_SPACE) + 1) * INIT_SPACE) - node_size;
+		// set the block as last block
+		current->next = NULL;
+	    }
+	    split(current, size);
 	}
-	current->free = 0;
-	current->size = (int) size;
-	current->next =  (node*)((char *) current + size + node_size);
-
-
-
-
-	current->prev =  previos;
-	if (current > tail && current->free == 0) {
-	    tail = current;
-	}
-
 	return (void *) (current + 1);
-
-
     }
 }
 
-
-
 void merge(node * nodes)
 {
-    node *try;
-    try = (node *) nodes->next;
+    if (nodes->next != NULL && (nodes->next)->free == yes) {
+	//merge the next block with the current block
+	nodes->free = yes;
+	if (nodes->next->next != NULL)
+	    ((nodes->next)->next)->prev = nodes;
 
-    while (nodes->next != NULL && ((node *) nodes->next)->free == 1) {
-	nodes->free = 1;
+	nodes->size += (nodes->next)->size + node_size;
+	nodes->next = (nodes->next)->next;
+    }
 
-	nodes->size += ((node *) nodes->next)->size + (int) sizeof(node);
-
-
-
-	nodes->next =
-	 (node*)( node_size + (char *) (nodes->next) +
-	    ( nodes->next)->size);
-
+    if (nodes->prev != NULL && (nodes->prev)->free == yes) {
+	//merge the previous block with the current block
+	nodes->free = yes;
+	(nodes->prev)->size += nodes->size + node_size;
+	(nodes->prev)->next = nodes->next;
+	// to protect against the case of the last block
 	if (nodes->next != NULL)
-	    ((node *) (nodes->next))->prev =  nodes;
-	if (tail == nodes) {
-	    node *temp = nodes;
-	    while (temp->prev != NULL && ((node *) temp->prev)->free == 1) {
+	    nodes->next->prev = nodes->prev;
+	nodes = nodes->prev;
+    }
+    //check if the last block is free and its size is larger than the Boundry_free_Size
+    if (nodes->next == NULL && nodes->free == yes
+	&& nodes->size >= Boundry_free_Size) {
+	long long temp = (nodes->size / Boundry_free_Size);
+	long long temp2 = temp * Boundry_free_Size;
+	//release the memory to the kernel
+	if (temp2 == nodes->size) {
+	    nodes->prev->next = NULL;
 
-		temp = (node *) temp->prev;
+	    void *check = sbrk(-temp2 - node_size);
+	    if (check == (void *) -1) {
+		perror(" sbrk failed ");
 	    }
-	    if (temp->prev != NULL)
-		tail = (node *) temp->prev;
-	}
-    }
-
-
-    if (nodes->next == NULL) {
-	((node *) nodes->prev)->next = NULL;
-	sbrk(-nodes->size);
-	upper_sbrk = sbrk(0);
-    }
-
-
-    while (nodes->prev != NULL && ((node *) nodes->prev)->free == 1) {
-	//nodes->free = 1;
-
-	if (tail == nodes) {
-	    node *temp = nodes;
-	    while (temp->prev != NULL && ((node *) temp->prev)->free == 1) {
-
-		temp = (node *) temp->prev;
-	    }
-	    if (temp->prev != NULL)
-		tail = (node *) temp->prev;
-
-	}
-
-
-	((node *) (nodes->prev))->size += nodes->size + (int) sizeof(node);
-	if ((char *) nodes->next < (char *) upper_sbrk)
-	    ((node *) (nodes->prev))->next = nodes->next;
-	else
-	    ((node *) (nodes->prev))->next = NULL;
-	nodes = (node *) nodes->prev;
-	if (((char *) try + node_size) < (char *) upper_sbrk)
-	    try->prev =  nodes;
-
-
-    }
-
-
-    while ((char *) (upper_sbrk) > 13 * page + (char *) tail + tail->size + node_size) {	//error accessing out of boundry if next is big
-	if (((nodes->next) != NULL)
-	    && ((node *) nodes->next)->next == NULL) {
-	    nodes->next = NULL;
-	    //    ((node *) nodes->prev)->next=NULL;
-	    sbrk(-nodes->size);
-	    upper_sbrk = sbrk(0);
-	    if (nodes->prev != NULL)
-		tail = (node *) nodes->prev;
 	} else {
-	    sbrk(-12 * page);
-
-	    upper_sbrk = (char *) sbrk(0) - 1;
-
+	    void *check = sbrk(-temp2);
+	    if (check == (void *) -1) {
+		perror(" sbrk failed ");
+	    }
+	    nodes->size -= temp2;
 	}
+
     }
 
     return;
@@ -264,41 +191,27 @@ void merge(node * nodes)
 
 void heap_free(void *ptr)
 {
-    if (ptr == NULL) {
+    //check if the pointer is NULL
+    if (NULL == ptr) {
 	return;
-    }
-    if ((char *) ptr < (char *) heap || (char *) ptr > (char *) upper_sbrk) {
-	return;
-    }
-    int flg = 0;
-    node *temp1 = (node *) head;
-
-
-    while ((char *) temp1 < (char *) upper_sbrk
-	   && (char *) temp1 >= (char *) heap && temp1->next != NULL) {
-	if (temp1 + 1 == ptr) {
-	    flg = 1;
-	    break;
+    } else {
+	//mark the block as free
+	node *node = ptr;
+	node--;
+	// if the block is already free
+	if (yes == node->free) {
+	    return;
 	}
-	temp1 = (node *) temp1->next;
+	node->free = yes;
+	//merge the block if possible
+	merge(node);
     }
-    if (flg == 0) {
-	return;
-    }
-
-    node *temp = (node *) ptr - 1;
-    temp->free = 1;
-
-    merge(temp);
-
-
-
-
 }
 
 
 void *heap_calloc(size_t nmemb, size_t size)
 {
+
     long int totsize = nmemb * size;
     if (0 == nmemb || 0 == size)
 	return NULL;
@@ -306,9 +219,10 @@ void *heap_calloc(size_t nmemb, size_t size)
 	perror("Calloc failed the size is too large");
 	return NULL;
     }
-
+    //allocate the memory
     void *ptr = heap_allocator(totsize);
     if (ptr != NULL) {
+	//initialize the memory to zero
 	memset(ptr, 0, totsize);
     }
     return ptr;
@@ -316,29 +230,29 @@ void *heap_calloc(size_t nmemb, size_t size)
 
 void *heap_realloc(void *ptr, size_t size)
 {
-    void *reValue;
+    void *newptr = NULL;	// Initialize new pointer to NULL
 
-    if (ptr == NULL) {
-	return heap_allocator(size);
+    if (NULL == ptr) {
+	newptr = malloc(size);	// Allocate memory if ptr is NULL
+    } else if (0 == size) {
+	free(ptr);		// Free memory if size is zero
+    } else {
+	if (size <= ((node *) (ptr - node_size))->size) {
+	    newptr = ptr;	// Return ptr if size is smaller or equal than the current allocated size
+	} else {
+	    newptr = malloc(size);	// Allocate new memory block
+	    if (NULL != newptr) {
+		memcpy(newptr, ptr, ((node *) (ptr - node_size))->size);	// Copy data to new memory block
+		free(ptr);
+	    }
+	}
     }
-    if (size == 0) {
-	heap_free(ptr);
-	return reValue;
-    }
-    if (size <= ((node *) (ptr - node_size))->size) {
-	return ptr;
-    }
-
-    reValue = heap_allocator(size);
-
-    memcpy(reValue, ptr, ((node *) (ptr - node_size))->size);
-    heap_free(ptr);
-    return reValue;
+    return newptr;		// Return pointer to reallocated memory block
 }
 
 
-//
-//
+
+
 // int main(void)
 // {
 //
@@ -365,6 +279,7 @@ void *heap_realloc(void *ptr, size_t size)
 //    heap_free(ptr3);
 //     int *ptr11[1000];
 //         for (int i = 0; i < 1000; i++) {
+//
 //      ptr11[i] = (int *) heap_allocator( 4*page);
 //     }
 //     for(int i=100;i<1000;i++)
@@ -387,12 +302,7 @@ void *heap_realloc(void *ptr, size_t size)
 //      temp = (node *) temp->next;
 //
 //     }
-//     printf("upper sbrk %p\n", upper_sbrk);
 //
-//     printf("lower sbrk %ld\n", lower_sbrk);
-//
-//     printf("diff %ld\n", (upper_sbrk - heap) / page);
-//     printf("tail %p\n", tail);
 //
 //     return 0;
 // }
