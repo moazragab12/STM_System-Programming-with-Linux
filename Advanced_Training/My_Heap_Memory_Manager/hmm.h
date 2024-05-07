@@ -74,10 +74,9 @@
 typedef struct node {
     struct node *prev;  /**< Pointer to the previous memory block. */
     struct node *next;  /**< Pointer to the next memory block. */
-    size_t size;        /**< Size of the memory block. */
+    long long int size;        /**< Size of the memory block. */
     char free;          /**< Flag indicating if the block is free or not. */
 } node;
-
 
 /**
  * @brief Merges adjacent free memory blocks.
