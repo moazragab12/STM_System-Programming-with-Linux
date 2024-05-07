@@ -1,5 +1,5 @@
 /*******************************Author:Moaz Ragab ***********************************************/
-/*******************************Date:13 April 2024 *********************************************/
+/*******************************Date:15 April 2024 *********************************************/
 /*******************************V:02 **********************************************************/
 
 #include <stdio.h>
@@ -102,7 +102,7 @@ void *heap_allocator(size_t size)
       if (current->free == yes && current->size >= size)
       {
 
-        if (current->size == size)
+        if (current->size < size + node_size)
         {
           // if we find exactly the same size, we don't need to  complete the list to save time
           current->free = no;
@@ -120,18 +120,11 @@ void *heap_allocator(size_t size)
       current = (node *)current->next;
     }
 
-    if (NULL != best_fit && NULL != best_fit->next)
+    if (NULL != best_fit)
     {
       if (best_fit->size >= size + node_size)
         split(best_fit, size);
-      else
-        best_fit->free = no;
-
       return (void *)(best_fit + 1);
-    }
-    else if (NULL != best_fit && ((size + node_size) <= best_fit->size) && best_fit->free == yes)
-    {
-      split(best_fit, size);
     }
     else
     {
@@ -213,7 +206,8 @@ void merge(node *nodes)
   // Boundry_free_Size
   if (nodes->next == NULL && nodes->free == yes && nodes->size >= Boundry_free_Size)
   {
-    long long temp = (nodes->size / Boundry_free_Size) * Boundry_free_Size;
+    long long temp =
+        (nodes->size / Boundry_free_Size) * Boundry_free_Size;
 
     // release the memory to the kernel
     if (temp == nodes->size)
