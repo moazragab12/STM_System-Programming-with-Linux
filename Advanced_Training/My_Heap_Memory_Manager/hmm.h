@@ -94,7 +94,7 @@ void merge(node *nodes);
  *
  * @param size Size of the initial heap space.
  */
-void Init_Heap(size_t size);
+void Init_Heap(long long size);
 /**
  * @brief Splits a memory block into two parts.
  *
