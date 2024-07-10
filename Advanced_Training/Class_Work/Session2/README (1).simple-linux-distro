@@ -1,0 +1,79 @@
+Create a simple Linux distro:
+==============================
+These steps are cloned from:
+https://lukaszgemborowski.github.io/articles/minimalistic-linux-system-on-qemu-arm.html
+
+
+Install the qemu:
+- sudo apt install qemu-system-arm
+
+We will use ARM Versatile PB board:
+https://www.qemu.org/docs/master/system/arm/versatile.html
+
+Install Cross Compiler:
+- sudo apt install gcc-arm-linux-gnueabi
+
+Download the latest Kernel from www.kernel.org.
+Untar linux kernel:
+- tar xvf linux-6.7.6.tar.xz 
+
+Configure Kernel:
+- cd linux-6.7.6
+- make O=./build/  ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- versatile_defconfig
+
+You can modify the config:
+- make O=./build/  ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- menuconfig
+
+Build the kernel:
+- time make -j8 O=./build/  ARCH=arm CROSS_COMPILE=arm-linux-gnueabi-
+
+Build the kernel modules:
+- time make -j8 modules O=./build/  ARCH=arm CROSS_COMPILE=arm-linux-gnueabi-
+
+Install the kernel modules to the new root file system:
+- time make -j8 modules_install O=./build/  ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- INSTALL_MOD_PATH=../rootfs
+
+To view the collected kernel modules:
+- cd ../rootfs
+- find . -name *.ko
+
+Now, you can run the qemu to see the booting of the kernel (make sure you are in the correct directory or modify the path of the zImage and versatile-pb.dtb):
+- qemu-system-arm -M versatilepb -kernel build/arch/arm/boot/zImage -dtb build/arch/arm/boot/dts/arm/versatile-pb.dtb  -serial stdio -append "serial=ttyAMA0"
+
+
+Download the latest Busybox from https://busybox.net/ and untar it.
+
+Compile busybox to get the Unix utilities:
+   make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- defconfig
+   make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- menuconfig
+   # From Settings > build busybox as a static binary
+   make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- -j8
+   make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- install
+
+Create the RootFS:
+- cd rootfs # which was create when you made modules install in kernel build
+- vim rootfs/init # and fill with the following content
+
+#!/bin/sh
+echo -e "\nHello from the init process\n"
+
+mount -tproc none /proc
+mount -tsysfs none /sys
+mknod -m660 /dev/mem c 1 1
+
+exec /bin/sh
+-----------------------
+
+- chmod +x rootfs/init
+- cp -av busybox-1.36.1/_install/* rootfs/
+- mkdir -pv rootfs/{bin,sbin,etc,proc,sys,usr/{bin,sbin}}
+
+Compress the file system:
+- cd rootfs/
+- find . -print0 | cpio --null -ov --format=newc | gzip -9 > ../rootfs.cpio.gz
+
+Run Qemu with the created file system:
+- qemu-system-arm -M versatilepb -kernel ./linux-6.7.6/build/arch/arm/boot/zImage -dtb ./linux-6.7.6/build/arch/arm/boot/dts/arm/versatile-pb.dtb -initrd ./rootfs.cpio.gz -serial stdio -append "root=/dev/mem serial=ttyAMA0"
+
+ 
+

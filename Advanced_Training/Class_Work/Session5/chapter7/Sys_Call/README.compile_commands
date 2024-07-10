@@ -1,0 +1,11 @@
+64-bit version:
+---------------
+- nasm -f elf64 syscall64.nasm
+- ld syscall64.o --entry main -o my64syscall
+
+System calls numbers are in:
+/usr/include/x86_64-linux-gnu/asm/unistd_64.h
+
+If you added sbrk, you will need to link libc:
+ld -Map=output.map syscall64.o --entry main -o my64syscall  /lib/x86_64-linux-gnu/libc.a
+
